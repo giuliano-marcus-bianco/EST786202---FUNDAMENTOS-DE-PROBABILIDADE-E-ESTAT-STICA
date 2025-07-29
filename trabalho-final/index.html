@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador da Mega Sena</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827; /* bg-gray-900 */
+            color: #d1d5db; /* text-gray-300 */
+        }
+        .number-grid-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        .number-grid-btn.selected {
+            background-color: #16a34a; /* bg-green-600 */
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(22, 163, 74, 0.5);
+        }
+        .card {
+            background-color: #1f2937; /* bg-gray-800 */
+            border: 1px solid #374151; /* border-gray-700 */
+            border-radius: 0.75rem; /* rounded-xl */
+            padding: 1.5rem; /* p-6 */
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        .loader {
+            border: 4px solid #374151;
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <div class="container mx-auto p-4 md:p-8 max-w-7xl">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-white">🎲 Simulador Analítico da Mega Sena</h1>
+            <p class="mt-2 text-lg text-gray-400">Analisando probabilidades e padrões em milhões de sorteios.</p>
+        </header>
+
+        <!-- Painel de Controle -->
+        <div class="card mb-8">
+            <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">Configuração da Simulação</h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Controles da Simulação -->
+                <div>
+                    <div class="mb-4">
+                        <label for="numSorteios" class="block text-sm font-medium text-gray-300 mb-2">Quantidade de Sorteios a Simular:</label>
+                        <input type="number" id="numSorteios" value="100000" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="Ex: 100000">
+                    </div>
+                     <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-300 mb-2">Sua Aposta (Escolha de 6 a 15 dezenas):</label>
+                        <div id="userNumbersDisplay" class="min-h-[40px] bg-gray-900 border border-gray-600 rounded-lg p-2 flex flex-wrap gap-2 items-center">
+                           <span class="text-gray-500">Selecione os números no painel abaixo...</span>
+                        </div>
+                    </div>
+                    <button id="startSimulationBtn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+                        Iniciar Simulação
+                    </button>
+                </div>
+
+                <!-- Painel de Números -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2 text-center">Painel de Dezenas</label>
+                    <div id="numberGrid" class="grid grid-cols-10 gap-2 p-2 bg-gray-900 rounded-lg border border-gray-700">
+                        <!-- Números serão gerados via JS -->
+                    </div>
+                </div>
+            </div>
+             <div id="loading-container" class="mt-6 text-center hidden flex-col items-center">
+                <div class="loader"></div>
+                <p id="progress-text" class="mt-2 text-white">Simulando... Por favor, aguarde.</p>
+                <div class="w-full bg-gray-700 rounded-full h-2.5 mt-2">
+                  <div id="progress-bar" class="bg-blue-600 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Painel de Resultados -->
+        <div id="resultsPanel" class="hidden">
+            <h2 class="text-3xl font-bold text-white text-center mb-6">Resultados da Simulação</h2>
+            
+            <!-- Estatísticas Gerais -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                <div class="card text-center">
+                    <h3 class="text-lg font-semibold text-gray-400">Sorteios Simulados</h3>
+                    <p id="totalSorteios" class="text-3xl font-bold text-white">0</p>
+                </div>
+                <div class="card text-center">
+                    <h3 class="text-lg font-semibold text-gray-400">Tempo de Execução</h3>
+                    <p id="tempoExecucao" class="text-3xl font-bold text-white">0s</p>
+                </div>
+                 <div class="card text-center">
+                    <h3 class="text-lg font-semibold text-gray-400">Sorteios Iguais</h3>
+                    <p id="sorteiosRepetidos" class="text-3xl font-bold text-white">0</p>
+                </div>
+                <div class="card text-center">
+                    <h3 class="text-lg font-semibold text-gray-400">Sorteios Iguais Consecutivos</h3>
+                    <p id="sorteiosConsecutivos" class="text-3xl font-bold text-white">0</p>
+                </div>
+            </div>
+
+            <!-- Análise da Aposta do Usuário -->
+            <div class="card mb-6">
+                <h3 class="text-xl font-semibold text-white mb-4">Análise da Sua Aposta</h3>
+                <div id="userBetAnalysis">
+                    <p class="text-gray-400">Nenhum resultado para exibir. Inicie uma simulação com seus números selecionados.</p>
+                </div>
+            </div>
+
+            <!-- Frequência das Dezenas -->
+            <div class="card">
+                 <h3 class="text-xl font-semibold text-white mb-4">Frequência das Dezenas (Mapa de Calor)</h3>
+                 <p class="text-sm text-gray-400 mb-4">Quanto mais "quente" (vermelho) o número, mais vezes ele foi sorteado.</p>
+                 <div id="heatmap" class="grid grid-cols-10 gap-2 p-2 bg-gray-900 rounded-lg">
+                     <!-- Heatmap será gerado via JS -->
+                 </div>
+            </div>
+        </div>
+        
+        <!-- Instruções -->
+        <div class="card mt-8">
+             <h2 class="text-2xl font-semibold text-white mb-4 border-b border-gray-700 pb-2">Instruções e Análises</h2>
+             <div class="prose prose-invert max-w-none text-gray-300">
+                <p>Esta ferramenta permite realizar uma simulação massiva de sorteios da Mega Sena para analisar padrões e probabilidades.</p>
+                <ol>
+                    <li><strong>Quantidade de Sorteios:</strong> Defina quantos sorteios você quer simular. Valores maiores (acima de 100.000) geram dados estatisticamente mais relevantes, mas podem demorar mais.</li>
+                    <li><strong>Sua Aposta:</strong> Clique nos números no painel para montar sua aposta (de 6 a 15 dezenas). A simulação irá verificar quantas vezes sua combinação (ou suas combinações, se jogar mais de 6 dezenas) teria acertado a Sena, Quina ou Quadra.</li>
+                    <li><strong>Iniciar Simulação:</strong> Clique no botão para começar. O processo pode congelar a página por alguns instantes em simulações muito grandes.</li>
+                </ol>
+                <h4 class="text-white">Analisando os Resultados</h4>
+                <ul>
+                    <li><strong>Probabilidade da sua aposta:</strong> A seção "Análise da Sua Aposta" mostrará quantas vezes você acertou 6, 5 ou 4 números. Compare a probabilidade simulada (acertos / total de sorteios) com a teórica. Para uma aposta de 6 números, a chance teórica de fazer a Sena é 1 em 50.063.860. Você verá que, mesmo com milhões de sorteios, acertar a Sena é um evento extremamente raro, validando a teoria.</li>
+                    <li><strong>Repetição de Dezenas e Combinações:</strong> O "Mapa de Calor" mostra visualmente se algumas dezenas saem mais que outras. Em uma simulação ideal e com infinitos sorteios, todos os números deveriam tender para a mesma frequência. Na prática, a aleatoriedade gera "números quentes" e "frios" em amostras finitas. A contagem de "Sorteios Iguais" mostra se alguma combinação de 6 números se repetiu durante toda a simulação.</li>
+                    <li><strong>Sorteios Consecutivos Iguais:</strong> A chance de isso acontecer é astronomicamente baixa (1 em 50 milhões, ao quadrado). É muito provável que este contador sempre mostre '0', a menos que você simule trilhões de sorteios.</li>
+                    <li><strong>Jogar com mais dezenas:</strong> Ao selecionar 7 ou mais dezenas, você verá um aumento drástico no número de Quadras e Quinas. Isso acontece porque uma aposta de 7 dezenas equivale a 7 apostas de 6 dezenas; uma de 8 dezenas equivale a 28 apostas, e assim por diante. A ferramenta calcula seus acertos em todas essas combinações implícitas.</li>
+                </ul>
+             </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // --- Elementos do DOM ---
+        const numberGrid = document.getElementById('numberGrid');
+        const userNumbersDisplay = document.getElementById('userNumbersDisplay');
+        const startBtn = document.getElementById('startSimulationBtn');
+        const numSorteiosInput = document.getElementById('numSorteios');
+        const resultsPanel = document.getElementById('resultsPanel');
+        const loadingContainer = document.getElementById('loading-container');
+        const progressText = document.getElementById('progress-text');
+        const progressBar = document.getElementById('progress-bar');
+        
+        // --- Variáveis de Estado ---
+        let selectedNumbers = [];
+        const MAX_SELECTED_NUMBERS = 15;
+
+        // --- Inicialização ---
+        function initializeNumberGrid() {
+            for (let i = 1; i <= 60; i++) {
+                const button = document.createElement('button');
+                button.textContent = i.toString().padStart(2, '0');
+                button.dataset.number = i;
+                button.className = 'number-grid-btn w-full h-10 rounded-md bg-gray-700 hover:bg-gray-600 text-white font-semibold';
+                button.addEventListener('click', () => toggleNumberSelection(i));
+                numberGrid.appendChild(button);
+            }
+        }
+
+        function toggleNumberSelection(number) {
+            const index = selectedNumbers.indexOf(number);
+            if (index > -1) {
+                selectedNumbers.splice(index, 1);
+            } else {
+                if (selectedNumbers.length < MAX_SELECTED_NUMBERS) {
+                    selectedNumbers.push(number);
+                } else {
+                    alert(`Você pode selecionar no máximo ${MAX_SELECTED_NUMBERS} dezenas.`);
+                    return;
+                }
+            }
+            selectedNumbers.sort((a, b) => a - b);
+            updateUI();
+        }
+        
+        function updateUI() {
+            // Atualiza os botões do grid
+            document.querySelectorAll('.number-grid-btn').forEach(btn => {
+                const num = parseInt(btn.dataset.number);
+                if (selectedNumbers.includes(num)) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
+            });
+
+            // Atualiza o display de números selecionados
+            userNumbersDisplay.innerHTML = '';
+            if (selectedNumbers.length === 0) {
+                 userNumbersDisplay.innerHTML = '<span class="text-gray-500">Selecione os números no painel...</span>';
+            } else {
+                selectedNumbers.forEach(num => {
+                    const pill = document.createElement('span');
+                    pill.textContent = num.toString().padStart(2, '0');
+                    pill.className = 'bg-green-600 text-white text-sm font-bold px-3 py-1 rounded-full';
+                    userNumbersDisplay.appendChild(pill);
+                });
+            }
+        }
+
+        // --- Lógica da Simulação ---
+        function gerarSorteio() {
+            const sorteio = new Set();
+            while (sorteio.size < 6) {
+                sorteio.add(Math.floor(Math.random() * 60) + 1);
+            }
+            return Array.from(sorteio).sort((a, b) => a - b);
+        }
+
+        function checkAcertos(aposta, sorteio) {
+            const acertos = aposta.filter(num => sorteio.includes(num));
+            return acertos.length;
+        }
+
+        function combinations(arr, k) {
+            if (k === 0) return [[]];
+            if (arr.length < k) return [];
+            
+            const first = arr[0];
+            const rest = arr.slice(1);
+            
+            const combsWithFirst = combinations(rest, k - 1).map(comb => [first, ...comb]);
+            const combsWithoutFirst = combinations(rest, k);
+            
+            return [...combsWithFirst, ...combsWithoutFirst];
+        }
+
+        async function startSimulation() {
+            const totalSorteios = parseInt(numSorteiosInput.value);
+            if (isNaN(totalSorteios) || totalSorteios <= 0) {
+                alert("Por favor, insira um número válido de sorteios.");
+                return;
+            }
+
+            setLoading(true);
+            resultsPanel.classList.add('hidden');
+
+            // Usar setTimeout para permitir que a UI atualize antes do loop pesado
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const startTime = performance.now();
+            
+            // Variáveis de análise
+            const frequenciaNumeros = new Array(61).fill(0);
+            const sorteiosRealizados = new Map();
+            let sorteiosRepetidos = 0;
+            let sorteiosConsecutivos = 0;
+            let ultimoSorteioStr = '';
+
+            const userBetSize = selectedNumbers.length;
+            const acertosContador = { sena: 0, quina: 0, quadra: 0 };
+            const userCombinations = userBetSize >= 6 ? combinations(selectedNumbers, 6) : [];
+
+            for (let i = 0; i < totalSorteios; i++) {
+                const sorteio = gerarSorteio();
+                const sorteioStr = sorteio.join(',');
+
+                // 1. Frequência das dezenas
+                for (const num of sorteio) {
+                    frequenciaNumeros[num]++;
+                }
+
+                // 2. Análise de repetição de sorteios
+                if (sorteiosRealizados.has(sorteioStr)) {
+                    sorteiosRepetidos++;
+                } else {
+                    sorteiosRealizados.set(sorteioStr, 1);
+                }
+
+                // 3. Análise de sorteios consecutivos iguais
+                if (sorteioStr === ultimoSorteioStr) {
+                    sorteiosConsecutivos++;
+                }
+                ultimoSorteioStr = sorteioStr;
+
+                // 4. Análise da aposta do usuário
+                if (userBetSize >= 6) {
+                    if (userBetSize === 6) {
+                        const acertos = checkAcertos(selectedNumbers, sorteio);
+                        if (acertos === 6) acertosContador.sena++;
+                        if (acertos === 5) acertosContador.quina++;
+                        if (acertos === 4) acertosContador.quadra++;
+                    } else { // Para apostas com mais de 6 dezenas
+                        for(const combination of userCombinations) {
+                             const acertos = checkAcertos(combination, sorteio);
+                             if (acertos === 6) acertosContador.sena++;
+                             if (acertos === 5) acertosContador.quina++;
+                             if (acertos === 4) acertosContador.quadra++;
+                        }
+                    }
+                }
+                
+                // Atualizar progresso a cada 1000 iterações para não sobrecarregar
+                if (i % 1000 === 0) {
+                    const progress = ((i + 1) / totalSorteios) * 100;
+                    updateProgress(progress, `Simulando ${i.toLocaleString('pt-BR')} de ${totalSorteios.toLocaleString('pt-BR')}...`);
+                    // Pausa para o navegador respirar
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+            }
+            
+            const endTime = performance.now();
+            const tempoExecucao = ((endTime - startTime) / 1000).toFixed(2);
+
+            displayResults({
+                totalSorteios,
+                tempoExecucao,
+                sorteiosRepetidos,
+                sorteiosConsecutivos,
+                frequenciaNumeros,
+                acertosContador,
+                userBetSize,
+                numUserCombinations: userCombinations.length
+            });
+            setLoading(false);
+        }
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                loadingContainer.classList.remove('hidden');
+                loadingContainer.classList.add('flex');
+                startBtn.disabled = true;
+                startBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            } else {
+                loadingContainer.classList.add('hidden');
+                loadingContainer.classList.remove('flex');
+                startBtn.disabled = false;
+                startBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+        
+        function updateProgress(percentage, text) {
+            progressBar.style.width = `${percentage}%`;
+            progressText.textContent = text;
+        }
+
+        // --- Exibição dos Resultados ---
+        function displayResults(data) {
+            resultsPanel.classList.remove('hidden');
+
+            document.getElementById('totalSorteios').textContent = data.totalSorteios.toLocaleString('pt-BR');
+            document.getElementById('tempoExecucao').textContent = `${data.tempoExecucao}s`;
+            document.getElementById('sorteiosRepetidos').textContent = data.sorteiosRepetidos.toLocaleString('pt-BR');
+            document.getElementById('sorteiosConsecutivos').textContent = data.sorteiosConsecutivos.toLocaleString('pt-BR');
+            
+            displayUserBetAnalysis(data);
+            displayHeatmap(data.frequenciaNumeros);
+        }
+        
+        function displayUserBetAnalysis(data) {
+            const container = document.getElementById('userBetAnalysis');
+            container.innerHTML = '';
+
+            if (data.userBetSize < 6) {
+                container.innerHTML = '<p class="text-gray-400">Você precisa selecionar pelo menos 6 dezenas para esta análise.</p>';
+                return;
+            }
+
+            const { sena, quina, quadra } = data.acertosContador;
+            const totalSorteios = data.totalSorteios;
+            
+            const probTeoricaSena = 1 / 50063860;
+            const probSimuladaSena = sena / totalSorteios;
+            
+            let analysisHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">`;
+            
+            analysisHTML += `
+                <div class="bg-gray-900 p-4 rounded-lg">
+                    <p class="text-lg font-semibold text-yellow-400">SENA (6 acertos)</p>
+                    <p class="text-2xl font-bold text-white">${sena.toLocaleString('pt-BR')}</p>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg">
+                    <p class="text-lg font-semibold text-yellow-400">QUINA (5 acertos)</p>
+                    <p class="text-2xl font-bold text-white">${quina.toLocaleString('pt-BR')}</p>
+                </div>
+                <div class="bg-gray-900 p-4 rounded-lg">
+                    <p class="text-lg font-semibold text-yellow-400">QUADRA (4 acertos)</p>
+                    <p class="text-2xl font-bold text-white">${quadra.toLocaleString('pt-BR')}</p>
+                </div>
+            </div>`;
+            
+            if (data.userBetSize > 6) {
+                 analysisHTML += `<p class="text-sm text-gray-400 mt-4">Sua aposta de ${data.userBetSize} dezenas gera ${data.numUserCombinations.toLocaleString('pt-BR')} combinações de 6 números. Os acertos acima são a soma de todas essas combinações.</p>`;
+            }
+
+            analysisHTML += `<div class="mt-4 pt-4 border-t border-gray-700">
+                <h4 class="font-semibold text-white mb-2">Comparativo de Probabilidade (Sena)</h4>
+                <p class="text-gray-300"><strong>Probabilidade Teórica:</strong> 1 em 50.063.860 (${(probTeoricaSena * 100).toExponential(4)}%)</p>
+                <p class="text-gray-300"><strong>Probabilidade Simulada:</strong> ${sena} em ${totalSorteios.toLocaleString('pt-BR')} (${(probSimuladaSena * 100).toExponential(4)}%)</p>
+            </div>`;
+
+            container.innerHTML = analysisHTML;
+        }
+
+        function displayHeatmap(frequenciaNumeros) {
+            const heatmapContainer = document.getElementById('heatmap');
+            heatmapContainer.innerHTML = '';
+            
+            const maxFreq = Math.max(...frequenciaNumeros.slice(1));
+            const minFreq = Math.min(...frequenciaNumeros.slice(1));
+
+            for (let i = 1; i <= 60; i++) {
+                const freq = frequenciaNumeros[i];
+                const normalizedFreq = maxFreq > minFreq ? (freq - minFreq) / (maxFreq - minFreq) : 0.5;
+                
+                // HSL color: H(0=red, 120=green, 240=blue), S(100%), L(50%)
+                // We map frequency from blue (cold) to red (hot)
+                const hue = (1 - normalizedFreq) * 240;
+
+                const cell = document.createElement('div');
+                cell.className = 'w-full h-12 rounded-md flex flex-col items-center justify-center text-xs font-bold text-white';
+                cell.style.backgroundColor = `hsl(${hue}, 90%, 50%)`;
+                cell.style.border = '1px solid rgba(255, 255, 255, 0.1)';
+                
+                const numberEl = document.createElement('span');
+                numberEl.textContent = i.toString().padStart(2, '0');
+                numberEl.className = 'text-base';
+
+                const freqEl = document.createElement('span');
+                freqEl.textContent = freq.toLocaleString('pt-BR');
+                freqEl.className = 'opacity-80';
+
+                cell.appendChild(numberEl);
+                cell.appendChild(freqEl);
+                heatmapContainer.appendChild(cell);
+            }
+        }
+
+        // --- Event Listeners ---
+        startBtn.addEventListener('click', startSimulation);
+
+        // --- Inicialização da Aplicação ---
+        initializeNumberGrid();
+        updateUI();
+
+    </script>
+</body>
+</html>

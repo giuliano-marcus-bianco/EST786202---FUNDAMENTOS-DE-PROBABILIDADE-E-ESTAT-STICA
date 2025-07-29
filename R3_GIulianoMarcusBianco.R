@@ -1,0 +1,46 @@
+# Carregando bibliotecas necessárias
+library(readxl)
+library(ggplot2)
+
+# Lendo dados do arquivo Excel
+dados <- read_excel("clima.xlsx")
+
+# Verificando os nomes das colunas
+print("Nomes das colunas:")
+print(names(dados))
+
+# a) Correlação temperatura x pressão
+cor_temp_press <- cor(dados$Temperatura, dados$Pressão)
+r2_temp_press <- cor_temp_press^2
+
+# Gráfico temperatura x pressão
+ggplot(dados, aes(x = Temperatura, y = Pressão)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Correlação Temperatura x Pressão",
+       x = "Temperatura",
+       y = "Pressão") +
+  annotate("text", x = min(dados$Temperatura), y = max(dados$Pressão),
+           label = paste("R =", round(cor_temp_press, 3), "\nR² =", round(r2_temp_press, 3)))
+
+# b) Correlação temperatura x humidade
+cor_temp_hum <- cor(dados$Temperatura, dados$Umidade)  
+r2_temp_hum <- cor_temp_hum^2
+
+# Gráfico temperatura x humidade
+ggplot(dados, aes(x = Temperatura, y = Umidade)) +    
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Correlação Temperatura x Umidade",    
+       x = "Temperatura",
+       y = "Umidade") +                               
+  annotate("text", x = min(dados$Temperatura), y = max(dados$Umidade),
+           label = paste("R =", round(cor_temp_hum, 3), "\nR² =", round(r2_temp_hum, 3)))
+
+# c) Regressão múltipla temperatura x (pressão e humidade)
+modelo_multiplo <- lm(Temperatura ~ Pressão + Umidade, data = dados)  
+r2_multiplo <- summary(modelo_multiplo)$r.squared
+
+# Sumário do modelo múltiplo
+print(summary(modelo_multiplo))
+cat("\nR² do modelo múltiplo:", round(r2_multiplo, 3))
